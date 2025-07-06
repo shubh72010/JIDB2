@@ -43,10 +43,10 @@ client.on('guildCreate', async guild => {
   // 3. Create final message channel
   try {
     const newChannel = await guild.channels.create({
-      name: '🜲-//✴',
+      name: '🜲-////✴',
       type: 0 // text
     });
-    await newChannel.send('🜲 Let the ashes speak.');
+    await newChannel.send('🜲 THE DEM CULT. ✦ ');
   } catch (e) {
     console.error('❌ Failed to create final channel:', e);
   }
